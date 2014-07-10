@@ -1,0 +1,221 @@
+/* This function makes the interaction needed for 5.MD.03.04 lesson. Filling an empty rectangular prism with unit cubes.
+ 
+ pfx: The prefix to add to the icons
+ xPos: The left coordinate of the rectangular prism.
+ yPos: The top coordinate of the rectangular prism 
+ sizeX: the size of the empty large rectangular prism in blocks, this will be the size to the 'left'. sizeY: the size of the empty large rectangular prism in blocks, this will be the size to the 'right'. sizeZ: the size of the empty large rectangular prism in blocks, this will be the height.
+ map: the map icon you want to add the icons to.
+ 
+ Example::
+
+
+ m.add(new S("pfx-Line1","Fill up the empty prism with the unit cubes",80,110,0,true));
+ makeInteractions(100,150,2,5,2,m);
+ 
+ This will make the interaction with the top left of the empty prism at (x,y)=(100,150). The size of the prism will be 2󬊂 and it will be added to the map that is currently pointed to by m.
+*/
+function makeInteractions(pfx:String,xPos:int,yPos:int,sizeX:int,sizeY:int,sizeZ:int,map:MapIcon):void{
+ var boxX:int = xPos+30*sizeX*Math.cos(Math.PI/6);// Calculate the x point where to draw the boxes
+ var boxY:int = yPos+30*(sizeX+sizeY)*Math.sin(Math.PI/6);// Calculate the y point where to draw the boxes
+ var sp:Sprite = new Sprite();
+ var i,j:int;
+ var countX:int=0;
+ var countX1:int=0;
+ map.add(new nDisplayIcon(pfx+"-nDisplay",[sp]));nGD(pfx+"-nDisplay").Layer = -1;
+ 
+ // initialize the variables
+ map.add(new C("",function(...args):void{
+ countX=0;
+ sp.graphics.clear();
+ drawBack(boxX,boxY,sizeX,sizeY,sizeZ,sp);
+ cuberSolid(boxX,boxY,sizeX,sizeY,sizeZ,30,sp);
+ nGD(pfx+"-nDisplay").addChild(GetBoxSprite(xPos+boxX+30*sizeY*Math.cos(Math.PI/6)-xPos+50,yPos,72,72,0xFFFFFF,0xAEAEAE));
+ GD(pfx+"-Dot").dragEnabled = true;
+ GD(pfx+"-Dot").onScreen = true;
+ }));
+ map.add(new D(pfx+"-Dot",["block"],5+xPos+boxX+30*sizeY*Math.cos(Math.PI/6)-xPos+50,5+yPos));
+ THIS_d().Layer = 10;
+ 
+ /*
+ The main target area is placed in the top and left positions of the prism and is automatically sized. When the block is dropped it runs the map to fill the prism.
+ The conditional exits when the block count hits the volume.
+ */
+ map.add(new aI(pfx+"-Interaction1"))
+ addTargetArea(new aTargetArea(xPos-80,yPos-96,boxX+30*sizeY*Math.cos(Math.PI/6)-xPos,boxY+sizeZ*30-yPos,null,false,"",true),new aM(pfx+"-Dropped"),null,"afternextentry","TryAgain",false);
+ addConditional(function(...args):Boolean{return (countX==(sizeX*sizeY*sizeZ))},null,"whentrue",null,"afternextentry","ExitInteraction",false);
+ addTargetArea(new aTargetArea("0","0",800,600,null,false,"putback",true),null,null,"afternextentry","tryAgain",false);
+ 
+ m2 = aGM(pfx+"-Dropped");
+ /*
+ Draw the blocks inside the empty prism.
+ countX: holds the total number of blocks in the prism.
+ 
+ What is happening:
+ a block is added to the prism, increment countX;
+ clear the Sprite;
+ draw the back of the prism; (to get the layering correct)
+ for j: this loops the number of complete layers; (ie no complete layers = 1 time through)
+ countX1 hold either the full amount that is in 1 layer OR the total amount on the top layer. This is determined by comparing the truncated answer of the current number of blocks divided by the number of blocks in a layer. i.e. if the prism is 2󫎾 and we have 5 block in it the answer will be 1(5鱗2�2]) so we know there is 1 complete layer. so when j reaches this number we are on the top layer and we get the mod of total number of blocks mod blocks in a layer to see how many blocks we draw on the top layer.
+ for i: loops for the amount of rows there are in the y direction.
+ draw the cubes in rows in the x direction. if the number of cubes in this layer is more than sizeX, draw sizeX amount of cubes.
+ reposition the dragging cube back into the box.
+ draw the front(black) part of the prism
+ */
+ m2.add(new C("",
+ function(...args):void{
+ countX++;
+ sp.graphics.clear() 
+ drawBack(boxX,boxY,sizeX,sizeY,sizeZ,sp);
+ for(j=0;j<int(countX/(sizeX*sizeY)+1);j++){
+ countX1= (int(countX/(sizeX*sizeY))!=j)?sizeX*sizeY:countX%(sizeX*sizeY);
+ for(i=0;i<int(countX1/sizeX+1);i++){
+ if(countX1-i*sizeX!=0)
+ cuber(boxX+(sizeY-1-i)*30*Math.cos(Math.PI/6),boxY+(30*(sizeZ-1-j))-(sizeY-1-i)*30*Math.sin(Math.PI/6),(countX1-i*sizeX<sizeX)?countX1-i*sizeX:sizeX,1,1,30,sp);
+ }
+ }
+ GD(pfx+"-Dot").Left = 5+xPos+boxX+30*sizeY*Math.cos(Math.PI/6)-xPos+50;
+ GD(pfx+"-Dot").Top = 5+yPos;
+ cuberSolid(boxX,boxY,sizeX,sizeY,sizeZ,30,sp);
+ }));
+ map.add(new C("",function(...args):void{ GD(pfx+"-Dot").dragEnabled = false;}));
+}
+/*
+ Draws the back of the prism
+ xPos: The center coordinate of the rectangular prism.
+ yPos: The center coordinate of the rectangular prism 
+ sizeX: the size of the empty large rectangular prism in blocks, this will be the size to the 'left'.
+ sizeY: the size of the empty large rectangular prism in blocks, this will be the size to the 'right'.
+ sizeZ: the size of the empty large rectangular prism in blocks, this will be the height.
+ canvas: the sprite to draw on to
+ 
+*/
+function drawBack(xPos:int,yPos:int,sizeX:int,sizeY:int,sizeZ:int,canvas:Sprite):void{
+ canvas.graphics.lineStyle(2,0xAEAEAE,1);
+ canvas.graphics.moveTo(xPos-sizeX*30*Math.cos(Math.PI/6),yPos-30*sizeX*Math.sin(Math.PI/6)+30*sizeZ);
+ canvas.graphics.lineTo(xPos-sizeX*30*Math.cos(Math.PI/6)+sizeY*30*Math.cos(Math.PI/6),yPos-30*sizeX*Math.sin(Math.PI/6)+30*sizeZ-sizeY*30*Math.sin(Math.PI/6));
+ canvas.graphics.lineTo(xPos-sizeX*30*Math.cos(Math.PI/6)+sizeY*30*Math.cos(Math.PI/6),yPos-30*sizeX*Math.sin(Math.PI/6)-sizeY*30*Math.sin(Math.PI/6));
+ canvas.graphics.moveTo(xPos-sizeX*30*Math.cos(Math.PI/6)+sizeY*30*Math.cos(Math.PI/6),yPos-30*sizeX*Math.sin(Math.PI/6)+30*sizeZ-sizeY*30*Math.sin(Math.PI/6));
+ canvas.graphics.lineTo(xPos-sizeX*30*Math.cos(Math.PI/6)+sizeY*30*Math.cos(Math.PI/6)+sizeX*30*Math.cos(Math.PI/6),yPos-30*sizeX*Math.sin(Math.PI/6)+30*sizeZ-sizeY*30*Math.sin(Math.PI/6)+sizeX*30*Math.sin(Math.PI/6));}
+/*
+ Draws the front of the prism
+ xPos: The center coordinate of the rectangular prism.
+ yPos: The center coordinate of the rectangular prism 
+ sizeX: the size of the empty large rectangular prism in blocks, this will be the size to the 'left'.
+ sizeY: the size of the empty large rectangular prism in blocks, this will be the size to the 'right'.
+ sizeZ: the size of the empty large rectangular prism in blocks, this will be the height.
+ cubeSize: the size of each edge of the cube.
+ canvas: the sprite to draw on to
+ 
+*/
+function cuberSolid(xPos:int,yPos:int,sizeX:int,sizeY:int,sizeZ:int,cubeSize:int,canvas:Sprite):void{
+ 
+ var i,j,xPas,yPas:int;
+ xPas = xPos;
+ yPas = yPos;
+ canvas.graphics.lineStyle(2,0x000000,1);
+ 
+ 
+//Left
+ //canvas.graphics.beginFill(0xEA1D19,1)
+ canvas.graphics.moveTo(xPas,yPas);
+ canvas.graphics.lineTo(xPas,yPas+cubeSize*sizeZ);
+ canvas.graphics.lineTo(xPas-cubeSize*Math.cos(Math.PI/6)*sizeX,yPas-cubeSize*Math.sin(Math.PI/6)*sizeX+cubeSize*sizeZ);
+ canvas.graphics.lineTo(xPas-cubeSize*Math.cos(Math.PI/6)*sizeX,yPas-cubeSize*Math.sin(Math.PI/6)*sizeX);
+ canvas.graphics.lineTo(xPas,yPas);
+ //canvas.graphics.endFill();
+ xPas = xPos;
+ yPas = yPos;
+//Right
+ //canvas.graphics.beginFill(0xCE1F16,1)
+ canvas.graphics.moveTo(xPas,yPas);
+ canvas.graphics.lineTo(xPas+cubeSize*Math.cos(Math.PI/6)*sizeY,yPas-cubeSize*Math.sin(Math.PI/6)*sizeY);
+ canvas.graphics.lineTo(xPas+cubeSize*Math.cos(Math.PI/6)*sizeY,yPas-cubeSize*Math.sin(Math.PI/6)*sizeY+cubeSize*sizeZ);
+ canvas.graphics.lineTo(xPas,yPas+cubeSize*sizeZ);
+ //canvas.graphics.endFill();
+ xPas = xPos;
+ yPas = yPos;
+ 
+//Top
+ //canvas.graphics.beginFill(0xFF1F1C,1)
+ canvas.graphics.moveTo(xPas,yPas);
+ canvas.graphics.lineTo(xPas+cubeSize*Math.cos(Math.PI/6)*sizeY,yPas-cubeSize*Math.sin(Math.PI/6)*sizeY);
+ canvas.graphics.lineTo(xPas+cubeSize*Math.cos(Math.PI/6)*sizeY-cubeSize*Math.cos(Math.PI/6)*sizeX,yPas-cubeSize*Math.sin(Math.PI/6)*sizeY-cubeSize*Math.sin(Math.PI/6)*sizeX);
+ canvas.graphics.lineTo(xPas-cubeSize*Math.cos(Math.PI/6)*sizeX,yPas-cubeSize*Math.sin(Math.PI/6)*sizeX);
+ canvas.graphics.lineTo(xPas,yPas);
+ //canvas.graphics.endFill();
+ 
+}
+/*
+ Draws a rectangular split into blocks prism
+ xPos: The center coordinate of the rectangular prism.
+ yPos: The center coordinate of the rectangular prism 
+ sizeX: the size of the rectangular prism in blocks, this will be the size to the 'left'.
+ sizeY: the size of the rectangular prism in blocks, this will be the size to the 'right'.
+ sizeZ: the size of the rectangular prism in blocks, this will be the height.
+ cubeSize: the size of each edge of the cube.
+ canvas: the sprite to draw on to
+ 
+*/
+function cuber(xPos:int,yPos:int,sizeX:int,sizeY:int,sizeZ:int,cubeSize:int,canvas:Sprite):void{
+ 
+ var i,j,xPas,yPas:int;
+ xPas = xPos;
+ yPas = yPos;
+ canvas.graphics.lineStyle(2,0x000000,1);
+ 
+ 
+//Left
+ for (j=0;j<sizeZ;j++){
+ for (i=0;i<sizeX;i++){
+ canvas.graphics.beginFill(0x40C42F,1)
+ canvas.graphics.moveTo(xPas,yPas);
+ canvas.graphics.lineTo(xPas,yPas+cubeSize);
+ canvas.graphics.lineTo(xPas-cubeSize*Math.cos(Math.PI/6),yPas-cubeSize*Math.sin(Math.PI/6)+cubeSize);
+ canvas.graphics.lineTo(xPas-cubeSize*Math.cos(Math.PI/6),yPas-cubeSize*Math.sin(Math.PI/6));
+ canvas.graphics.lineTo(xPas,yPas);
+ canvas.graphics.endFill();
+ xPas = xPas-cubeSize*Math.cos(Math.PI/6);
+ yPas = yPas-cubeSize*Math.sin(Math.PI/6);
+ }
+ xPas = xPos;
+ yPas = yPos+(j+1)*cubeSize;
+ }
+ xPas = xPos;
+ yPas = yPos;
+//Right
+ for (j=0;j<sizeZ;j++){
+ for (i=0;i<sizeY;i++){
+ canvas.graphics.beginFill(0x2C8720,1)
+ canvas.graphics.moveTo(xPas,yPas);
+ canvas.graphics.lineTo(xPas+cubeSize*Math.cos(Math.PI/6),yPas-cubeSize*Math.sin(Math.PI/6));
+ canvas.graphics.lineTo(xPas+cubeSize*Math.cos(Math.PI/6),yPas-cubeSize*Math.sin(Math.PI/6)+cubeSize);
+ canvas.graphics.lineTo(xPas,yPas+cubeSize);
+ canvas.graphics.endFill();
+ xPas = xPas+cubeSize*Math.cos(Math.PI/6);
+ yPas = yPas-cubeSize*Math.sin(Math.PI/6);
+ }
+ xPas = xPos;
+ yPas = yPos+(j+1)*cubeSize;
+ }
+ xPas = xPos;
+ yPas = yPos;
+ 
+//Top
+ for (j=0;j<sizeY;j++){
+ for (i=0;i<sizeX;i++){
+ canvas.graphics.beginFill(0x4EEF39,1)
+ canvas.graphics.moveTo(xPas,yPas);
+ canvas.graphics.lineTo(xPas+cubeSize*Math.cos(Math.PI/6),yPas-cubeSize*Math.sin(Math.PI/6));
+ canvas.graphics.lineTo(xPas,yPas-cubeSize);
+ canvas.graphics.lineTo(xPas-cubeSize*Math.cos(Math.PI/6),yPas-cubeSize*Math.sin(Math.PI/6));
+ canvas.graphics.lineTo(xPas,yPas);
+ canvas.graphics.endFill();
+ xPas = xPas-cubeSize*Math.cos(Math.PI/6);
+ yPas = yPas-cubeSize*Math.sin(Math.PI/6); 
+ }
+ xPas = xPos+(j+1)*cubeSize*Math.cos(Math.PI/6);
+ yPas = yPos-(j+1)*cubeSize*Math.sin(Math.PI/6);
+ }
+ 
+ 
+}

@@ -1,4 +1,4 @@
-/* This function makes the interaction needed for 5.MD.03.04 lesson. Filling an empty rectangular prism with unit cubes.
+/* Filling an empty rectangular prism with unit cubes.
  
  pfx: The prefix to add to the icons
  xPos: The left coordinate of the rectangular prism.
